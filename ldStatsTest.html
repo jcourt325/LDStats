@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LD Stats Test</title>
+</head>
+
+<body>
+    <h2>LD Stats Test</h2>
+    <input type="text" id="username" placeholder="Enter your username">
+    <button onclick="generateStats()">Go</button>
+
+    <div id="chart-container"></div>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+    <script>
+        let eventResources; // Object. Raw Event resources from LD. {id: resource, id: resource}
+        let userGameResources; // Array. Raw Game resources from LD
+        let events; // Object. Processed event resources. They should all have id, event-theme, event-start, event-end, grade-__ and grad-__-optional fields, and rankings, which is an object like {jam: [1st, 2nd, etc.], compo: [1st, 2nd, etc.]}
+        let userGames; // Array. Processed game resources. They should all have id, jam-type (compo, jam, or extra), name, and grades, which is an object like {Overall: {rating: 3.567, ranking: 235, grades: 22}, etc.}
+
+        async function generateStats() {
+            // Load all the data we need
+            userGameResources = await fetchGamesBy(document.getElementById('username').value);
+            eventResources = await fetchEventsOfGames(userGameResources);
+
+            // console.log("Fetched User's game resources from LD: ", JSON.stringify(userGameResources, null, 2));
+            // console.log("Fetched Event resources from LD: ", JSON.stringify(eventResources, null, 2));
+
+            // Pull out just the things we need, for more convenient access
+            events = processEvents(eventResources);
+            userGames = processGames(userGameResources, events);
+
+            console.log("User's Processed Games: ", JSON.stringify(userGames, null, 2));
+            console.log("Processed Events for User's Games: ", JSON.stringify(events, null, 2));
+
+            // Generate Charts
+            generateRatingCharts(userGames);
+        }
+
+        async function fetchGamesBy(username) {
+            const results = [];
+            
+            if (!username) {
+                alert("Username not provided");
+                return;
+            }
+
+            try {
+                // First API call to get userID
+                const userResponse = await fetch(`https://api.ldjam.com/vx/node2/walk/1/users/${username}/games?node=&parent=&_superparent=&author=`);
+                const userData = await userResponse.json();
+                let userID = userData.node_id;
+
+                // Fetch lists of games in groups until no more results
+                const groupSize = 10;
+                let offset = 0;
+                while (true) {
+                    const feedResponse = await fetch(`https://api.ldjam.com/vx/node/feed/${userID}/authors/item/game?limit=${groupSize}&offset=${offset}`);
+                    const feedData = await feedResponse.json();
+                    const feedArray = feedData.feed;
+
+                    if (feedArray.length === 0) {
+                        break; // Exit loop if no more games
+                    }
+
+                    // For each game we found the id of, get all of its more detailed data
+                    for (game of feedArray) {
+                        const gameId = game.id;
+                        const gameResponse = await fetch(`https://api.ldjam.com/vx/node2/get/${gameId}`);
+                        const gameData = await gameResponse.json();
+
+                        const thisGame = gameData.node[0]
+                        results.push(thisGame);
+                    };
+
+                    offset += groupSize; // Increment offset for the next item
+                }
+
+                // Done
+                return results;
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                alert("Error fetching data. Logged in the console.");
+            }
+        }
+
+        async function fetchEventsOfGames(gameResources) {
+            const results = {};
+
+            for (game of gameResources) {
+                results[game.parent] = await fetchEventOf(game);
+            };
+
+            return results;
+        }
+
+        async function fetchEventOf(game) {
+            // The ID of a game's event is its parent
+            const eventID = game.parent
+
+            try {
+                const eventResponse = await fetch(`https://api.ldjam.com/vx/node2/get/${eventID}`);
+                const eventData = await eventResponse.json();
+                const event = eventData["node"][0];
+
+                // Done
+                return event;
+            } catch (error) {
+                console.error("Error fetching data:", error);
+                alert("Error fetching data. Logged in the console.");
+            }
+        }
+
+        function processEvents(eventResources) {
+            const results = {};
+
+            for (eventID in eventResources) {
+                // Basic Data
+                results[eventID] = {
+                    id: eventResources[eventID].id,
+                    eventTheme: eventResources[eventID].meta["event-theme"],
+                    eventStart: eventResources[eventID].meta["event-start"],
+                    eventEnd: eventResources[eventID].meta["event-end"],
+                };
+
+                // Now we parse out all the grading fields
+                for (key in eventResources[eventID].meta) {
+                    if (key.startsWith("grade-") && !key.endsWith("optional")) {
+                        // If it's not an optional flag, copy it over.
+                        results[eventID][key] = eventResources[eventID].meta[key];
+
+                        // Then, copy over whether it has a corresponding optional flag.
+                        results[eventID][key + "-optional"] = (eventResources[eventID].meta[key + "-optional"] == "1")
+                    }
+                }
+
+                // TODO: pull the rankings for this event as well.
+            }
+
+            return results;
+        }
+
+        function processGames(gameResources, processedEvents) {
+            const results = [];
+
+            for (game of gameResources) {
+                // Basic Data
+                const thisGame = {
+                    id: game.id,
+                    jamType: game.subsubtype,
+                    name: game.name,
+                };
+
+                // Now we parse out all the grading fields
+                const grades = {};
+                for (key in game.grade) {
+                    const categoryName = processedEvents[game.parent][key];
+                    grades[categoryName] = {
+                        rating: game.magic[key + "-average"],
+                        rank: game.magic[key + "-result"],
+                        grades: game.grade[key],
+                    };
+                }
+
+                thisGame.grades = grades;
+
+                results.push(thisGame);
+            }
+
+            return results;
+        }
+
+        function generateRatingCharts(games) {
+            const container = document.getElementById('chart-container');
+
+            games.forEach((game, index) => {
+                // Create a new div and canvas for each chart
+                const chartDiv = document.createElement('div');
+                chartDiv.style = 'width: 50%; height: 25%; padding: 5px 5px 60px 5px;';
+
+                const canvas = document.createElement('canvas');
+
+                // Append canvas to div and div to container
+                chartDiv.appendChild(canvas);
+                container.appendChild(chartDiv);
+
+                // Create the chart using the createRatingChart function
+                createRatingChartFor(game, canvas);
+            });
+        }
+
+        function createRatingChartFor(game, canvas) {
+            // Prepare labels and data arrays for the chart
+            const labels = Object.keys(game.grades); // ["Overall", "Fun", "Innovation", ...]
+            const ratings = labels.map(key => game.grades[key].rating); // [2.921, 2.842, 3.1, ...]
+
+            // Create a color gradient function based on the rating. Red at 1, Yellow at 3, Green at 5.
+            const getColorForRating = (rating) => {
+                const red = rating <= 3 ? 255 : Math.round(255 - (rating - 3) * 255 / 2);
+                const green = rating >= 3 ? 255 : Math.round((rating - 1) * 255 / 2);
+                return `rgb(${red}, ${green}, 0, 0.8)`;
+            };
+
+            // Map ratings to gradient colors
+            const backgroundColors = ratings.map(getColorForRating);
+
+            // Create the bar chart using Chart.js
+            const ctx = canvas.getContext('2d');
+            new Chart(ctx, {
+                type: 'bar',
+                data: {
+                labels: labels,
+                datasets: [{
+                    label: 'Ratings',
+                    data: ratings,
+                    backgroundColor: backgroundColors,
+                    borderWidth: 1
+                }]
+                },
+                options: {
+                    plugins: {
+                        title: {
+                            display: true,
+                            text: game.name
+                        }
+                    },
+                    scales: {
+                        y: {
+                        beginAtZero: true,
+                        min: 1,
+                        max: 5,
+                        title: {
+                            display: true,
+                            text: 'Rating'
+                        }
+                        }
+                    }
+                }
+            })
+        }
+    </script>
+</body>
+</html>
