@@ -20,20 +20,19 @@
     <script>
         let eventResources; // Object. Raw Event resources from LD. {id: resource, id: resource}
         let userGameResources; // Array. Raw Game resources from LD
-        let events; // Object. Processed event resources. They should all have id, eventTheme, eventStart, eventEnd, grade-__ and grade-__-optional fields, and rankings, which is an object like {jam: [1st, 2nd, etc.], compo: [1st, 2nd, etc.]}
+        let events; // Object. Processed event resources. They should all have id, name, eventTheme, eventStart, eventEnd, grade-__ and grade-__-optional fields, and rankings, which is an object like {jam: [1st, 2nd, etc.], compo: [1st, 2nd, etc.]}
         let userGames; // Array. Processed game resources. They should all have id, parentEvent, jamType (compo, jam, or extra), name, and grades, which is an object like {Overall: {rating: 3.567, ranking: 235, grades: 22}, etc.}
 
         async function generateStats() {
+            // UI
             document.getElementById("loading-alert").style.visibility = "visible";
+            document.getElementById("chart-container").replaceChildren();
 
             // Load all the data we need
             userGameResources = await fetchGamesBy(document.getElementById('username').value);
             eventResources = await fetchEventsOfGames(userGameResources);
 
             document.getElementById("loading-alert").style.visibility = "hidden";
-
-            // console.log("Fetched User's game resources from LD: ", JSON.stringify(userGameResources, null, 2));
-            // console.log("Fetched Event resources from LD: ", JSON.stringify(eventResources, null, 2));
 
             // Pull out just the things we need, for more convenient access
             events = processEvents(eventResources);
@@ -43,7 +42,7 @@
             console.log("Processed Events for User's Games: ", JSON.stringify(events, null, 2));
 
             // Generate Charts
-            generateRatingCharts(userGames);
+            generateRatingCharts(userGames, events);
         }
 
         async function fetchGamesBy(username) {
@@ -127,6 +126,7 @@
                 // Basic Data
                 results[eventID] = {
                     id: eventResources[eventID].id,
+                    name: eventResources[eventID].name,
                     eventTheme: eventResources[eventID].meta["event-theme"],
                     eventStart: eventResources[eventID].meta["event-start"],
                     eventEnd: eventResources[eventID].meta["event-end"],
@@ -180,7 +180,7 @@
             return results;
         }
 
-        function generateRatingCharts(games) {
+        function generateRatingCharts(games, events) {
             const container = document.getElementById('chart-container');
 
             games.forEach((game, index) => {
@@ -195,11 +195,11 @@
                 container.appendChild(chartDiv);
 
                 // Create the chart using the createRatingChart function
-                createRatingChartFor(game, canvas);
+                createRatingChartFor(game, events[game.parentEvent], canvas);
             });
         }
 
-        function createRatingChartFor(game, canvas) {
+        function createRatingChartFor(game, event, canvas) {
             // Prepare labels and data arrays for the chart
             const labels = Object.keys(game.grades); // ["Overall", "Fun", "Innovation", ...]
             const ratings = labels.map(key => game.grades[key].rating); // [2.921, 2.842, 3.1, ...]
@@ -231,7 +231,7 @@
                     plugins: {
                         title: {
                             display: true,
-                            text: game.name
+                            text: `${event.name} - ${game.name}`
                         }
                     },
                     scales: {
