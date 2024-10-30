@@ -8,13 +8,32 @@
 </head>
 
 <body>
-    <h2>LD Stats Test</h2>
+    <h1>LD Stats Test</h1>
     <input type="text" id="username" placeholder="Enter your username">
     <button onclick="generateStats()">Go</button>
 
     <p id="loading-alert"></p>
 
-    <div id="chart-container"></div>
+    <h2>Game Charts</h2>
+    <div id="game-chart-container">
+        <p>
+            Please enter your ldjam.com username above.
+        </p>
+    </div>
+
+    <div style="width: 100%">
+        <h2 id="Percentiles">Percentiles</h2>
+        <p>
+            The LD website tells you your ranking in a particular category within an event. Like "245th Overall", but 245th <i>out of what</i> Overall? As far as I can tell, the website doesn't show you anywhere, and I think it probably matters to a lot of people, since some events (like during COVID) have had many more participants than others.
+        </p>
+        <p>
+            It's clear that the jam and compo are separate - there are always 2 games ranked 1st Overall for any given event (1 jam and 1 compo). But the website doesn't seem to have an opinion on whether you "beat" games that didn't recieve a rating in a category (either because of opting out or not getting enough votes).
+        </p>
+        <p>
+            These charts are generated assuming that you do not "beat" games without ratings - the number of games that recieved a rating in a category is determined by asking the API for the worst ranking in a category.
+        </p>
+    </div>
+
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
@@ -26,7 +45,7 @@
 
         async function generateStats() {
             document.getElementById("loading-alert").innerHTML = "Loading. This usually takes several seconds, and takes longer the more events you've participated in.<br/><br/>";
-            document.getElementById("chart-container").replaceChildren(); // Clear, in case we've already done this.
+            document.getElementById("game-chart-container").replaceChildren(); // Clear, in case we've already done this.
 
             // Load all the data we need
             document.getElementById("loading-alert").innerHTML += "<br/>Fetching User's Games... ";
@@ -238,26 +257,32 @@
         }
 
         function generateGameCharts(games, events) {
-            const container = document.getElementById('chart-container');
+            const container = document.getElementById('game-chart-container');
 
             games.forEach((game, index) => {
                 // Create divs and canvases for each chart
                 const gameDiv = document.createElement('div');
-                gameDiv.style = 'width: 100%; height: 25%; padding: 5px 5px 60px 5px;';
+                gameDiv.style = 'display: flex; width: 100%; height: 25%; padding: 5px 5px 50px 5px;';
 
                 const leftDiv = document.createElement('div');
-                leftDiv.style = 'float: left; width: 45%; height: 25%; padding: 5px 5px 60px 5px;';
+                leftDiv.style = 'flex: 1; width: 45%; height: 25%; padding: 0px 50px 50px 0px;';
                 const rightDiv = document.createElement('div');
-                rightDiv.style = 'float: right; width: 45%; height: 25%; padding: 5px 5px 60px 5px;';
+                rightDiv.style = 'flex: 1; width: 45%; height: 25%; padding: 0px 0px 50px 50px;';
 
                 const leftCanvas = document.createElement('canvas');
                 const rightCanvas = document.createElement('canvas');
 
+                const percentileFooter = document.createElement('p');
+                percentileFooter.innerHTML = `* <a href="#Percentiles">See Below</a> for how this is calculated.`;
+
                 // Append canvas to div and div to container
                 leftDiv.appendChild(leftCanvas);
                 rightDiv.appendChild(rightCanvas);
+                rightDiv.appendChild(percentileFooter);
+
                 gameDiv.appendChild(leftDiv);
                 gameDiv.appendChild(rightDiv);
+
                 container.appendChild(gameDiv);
 
                 // Create the chart using the createRatingChart function
