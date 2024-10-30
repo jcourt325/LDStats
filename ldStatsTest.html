@@ -12,19 +12,25 @@
     <input type="text" id="username" placeholder="Enter your username">
     <button onclick="generateStats()">Go</button>
 
+    <p id="loading-alert" style="visibility: hidden;">Fetching Game and Event Data...</p>
+
     <div id="chart-container"></div>
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
     <script>
         let eventResources; // Object. Raw Event resources from LD. {id: resource, id: resource}
         let userGameResources; // Array. Raw Game resources from LD
-        let events; // Object. Processed event resources. They should all have id, event-theme, event-start, event-end, grade-__ and grad-__-optional fields, and rankings, which is an object like {jam: [1st, 2nd, etc.], compo: [1st, 2nd, etc.]}
-        let userGames; // Array. Processed game resources. They should all have id, jam-type (compo, jam, or extra), name, and grades, which is an object like {Overall: {rating: 3.567, ranking: 235, grades: 22}, etc.}
+        let events; // Object. Processed event resources. They should all have id, eventTheme, eventStart, eventEnd, grade-__ and grade-__-optional fields, and rankings, which is an object like {jam: [1st, 2nd, etc.], compo: [1st, 2nd, etc.]}
+        let userGames; // Array. Processed game resources. They should all have id, parentEvent, jamType (compo, jam, or extra), name, and grades, which is an object like {Overall: {rating: 3.567, ranking: 235, grades: 22}, etc.}
 
         async function generateStats() {
+            document.getElementById("loading-alert").style.visibility = "visible";
+
             // Load all the data we need
             userGameResources = await fetchGamesBy(document.getElementById('username').value);
             eventResources = await fetchEventsOfGames(userGameResources);
+
+            document.getElementById("loading-alert").style.visibility = "hidden";
 
             // console.log("Fetched User's game resources from LD: ", JSON.stringify(userGameResources, null, 2));
             // console.log("Fetched Event resources from LD: ", JSON.stringify(eventResources, null, 2));
@@ -150,6 +156,7 @@
                 // Basic Data
                 const thisGame = {
                     id: game.id,
+                    parentEvent: game.parent,
                     jamType: game.subsubtype,
                     name: game.name,
                 };
