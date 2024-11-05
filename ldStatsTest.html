@@ -219,25 +219,48 @@
                     }
                 }
 
+                // Make all the requests.
+                const requestPromises = []
                 for (key in eventResource.meta) {
                     if (key.startsWith("grade-") && !key.endsWith("optional") && !key.endsWith("required")) {
                         // If it's a name and not a flag, fetch the worst ranking, in each category of game.
                         results[key] = {};
 
                         for (category of categories) {
-                            const rankingResponse = await fetch(`https://api.ldjam.com/vx/node/feed/${eventResource.id}/${key}-result+parent/item/game/${category}?limit=1`);
-                            const rankingData = await rankingResponse.json();
-                            const lastPlace = rankingData["feed"][0];
-
-                            // Sometimes there may not be anything in a category that has a ranking. This seems to always be the case with Extra games.
-                            if (lastPlace) {
-                                results[key][category] = lastPlace.value;
-                            }
+                            requestPromises.push(fetch(`https://api.ldjam.com/vx/node/feed/${eventResource.id}/${key}-result+parent/item/game/${category}?limit=1`));
                         }
                     }
                 }
 
+                // Wait for all the requests to finish.
+                const responses = await Promise.all(requestPromises);
+
+                // json
+                const dataPromises = responses.map(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error! Status: ${response.status}`);
+                    }
+                    return response.json();
+                });
+
+                const data = await Promise.all(dataPromises);
+
+                for (result of data) {
+                    const lastPlace = result["feed"][0];
+
+                    // Sometimes there may not be anything in a category that has a ranking. This seems to always be the case with Extra games.
+                    if (lastPlace) {
+                        const ratingCategory = result["method"][0].slice(0, -7);
+                        if (!results[ratingCategory]) { // Set up this object if we haven't already
+                            results[ratingCategory] = {};
+                        }
+
+                        results[ratingCategory][result["subsubtypes"][0]] = lastPlace.value;
+                    }
+                }
+
                 // Done
+                console.log(results);
                 return results;
             } catch (error) {
                 console.error("Error fetching data:", error);
