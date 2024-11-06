@@ -11,34 +11,42 @@
 
 <body>
     <h1>LD Stats Test</h1>
-    <input type="text" id="username" placeholder="Enter your username">
+    <label for="username">Enter your ldjam.com username:</label>
+    <br>
+    <input type="text" id="username" name="username" placeholder="Enter your username">
     <button onclick="generateStats()">Go</button>
 
     <p id="loading-alert"></p>
 
-    <h2 id="game-charts">Game Charts</h2>
-    <div id="game-chart-container">
-        <p>
-            Please enter your ldjam.com username above.
-        </p>
-    </div>
+    <section id="game-charts-section" hidden>
+        <h2>Game Charts</h2>
+        <div id="game-chart-container">
+            <p>
+                Please enter your ldjam.com username above.
+            </p>
+        </div>
+    </section>
 
-    <h2 id="over-time">Results Over Time</h2>
-    <p>(You can click on the categories in the Legend to toggle them.)</p>
-    <div id="over-time-chart-container" style="display: flex; width: 100%; height: 25%; padding: 0px 0px 50px 0px;">
-        <p>
-            Please enter your ldjam.com username above.
-        </p>
-    </div>
+    <section id="over-time-section" hidden>
+        <h2">Results Over Time</h2>
+        <p>(You can click on the categories in the Legend to toggle them.)</p>
+        <div id="over-time-chart-container" style="display: flex; width: 100%; height: 25%; padding: 0px 0px 50px 0px;">
+            <p>
+                Please enter your ldjam.com username above.
+            </p>
+        </div>
+    </section>
 
-    <h2 id="event-charts">Event Charts</h2>
-    <div id="event-chart-container" style="width: 75%; height: 75%;">
-        <p>
-            Please enter your ldjam.com username above.
-        </p>
-    </div>
+    <section id="event-charts-section" hidden>
+        <h2>Event Charts</h2>
+        <div id="event-chart-container" style="width: 75%; height: 75%;">
+            <p>
+                Please enter your ldjam.com username above.
+            </p>
+        </div>
+    </section>
 
-    <div style="width: 100%">
+    <section id="percentiles-note-section" hidden>
         <h2 id="Percentiles">Note on Percentiles</h2>
         <p>
             The LD website tells you your ranking in a particular category within an event. Like "245th Overall", but 245th <i>out of what</i> Overall? As far as I can tell, the website doesn't show you anywhere, and I think it probably matters to a lot of people, since some events (like during COVID) have had many more participants than others.
@@ -49,7 +57,7 @@
         <p>
             These charts are generated assuming that you do not "beat" games without ratings - the number of games that recieved a rating in a category is determined by asking the API for the worst ranking in a category.
         </p>
-    </div>
+    </section>
 
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
@@ -345,6 +353,7 @@
         // ================================================================================
 
         function generateGameCharts(games, events) {
+            document.getElementById("game-charts-section").hidden = false;
             document.getElementById("game-chart-container").replaceChildren(); // Clear, in case we've already done this.
             const container = document.getElementById('game-chart-container');
 
@@ -431,6 +440,8 @@
         }
 
         function createPercentileChartFor(game, event, canvas) {
+            document.getElementById("percentiles-note-section").hidden = false;
+
             // Prepare labels and data arrays for the chart
             const labels = Object.keys(game.grades); // ["Overall", "Fun", "Innovation", ...]
             const percentiles = labels.map(key => (1 - (game.grades[key].rank / event.rankingCounts[key][game.jamType])) * 100);
@@ -483,6 +494,7 @@
         // ================================================================================
 
         function generateOverTimeCharts(games, events) {
+            document.getElementById("over-time-section").hidden = false;
             document.getElementById("over-time-chart-container").replaceChildren(); // Clear, in case we've already done this.
             const container = document.getElementById('over-time-chart-container');
 
@@ -565,6 +577,8 @@
         }
 
         function createPercentilesOverTimeChart(games, events, canvas) {
+            document.getElementById("percentiles-note-section").hidden = false;
+
             // Prepare labels and data arrays for the chart
             const labels = games.map(item => item.name);
 
@@ -650,6 +664,7 @@
         // ================================================================================
 
         function generateEventCharts(games, events) {
+            document.getElementById("event-charts-section").hidden = false;
             document.getElementById("event-chart-container").replaceChildren(); // Clear, in case we've already done this.
             const container = document.getElementById('event-chart-container');
 
