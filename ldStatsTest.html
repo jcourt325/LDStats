@@ -11,6 +11,9 @@
 
 <body>
     <h1>LD Stats Test</h1>
+
+    <p>You can download this script and run it locally if you want. See <a href="https://github.com/jcourt325/LDStats">this repository</a>.</p>
+
     <label for="username">Enter your ldjam.com username:</label>
     <br>
     <input type="text" id="username" name="username" placeholder="Enter your username">
@@ -673,7 +676,7 @@
             const canvas = document.createElement('canvas');
 
             const participantsFooter = document.createElement('p');
-            participantsFooter.innerHTML = `NOTE: This shows the number of games (of any category) that recieved an Overall score. This is not exactly the same as the number that were submitted.`;
+            participantsFooter.innerHTML = `NOTE: This shows the number of games (jam and compo) that recieved an Overall score. This is not exactly the same as the number that were submitted.`;
 
             // Add all the elements
             container.appendChild(canvas);

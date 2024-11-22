@@ -1,6 +1,27 @@
 <!DOCTYPE html>
 <html lang="en">
 
-<iframe src="/ldStatsTest.html" title="Stats Script Page"></iframe>
+    <!-- If someone downloads it, I want the script that does the actual work to have a useful, informative filename. But I also don't want the index page to have to link or redirect to it or anything. So it's just embedded here. -->
+
+    <body>
+        <iframe
+            src="./ldStatsTest.html"
+            title="Stats Script Page"
+            style="
+                position: fixed;
+                top: 0px;
+                bottom: 0px;
+                right: 0px;
+                width: 100%;
+                border: none;
+                margin: 0;
+                padding: 0;
+                overflow: hidden;
+                z-index: 999999;
+                height: 100%;
+            ">
+            >
+        </iframe>
+    </body>
 
 </html>
